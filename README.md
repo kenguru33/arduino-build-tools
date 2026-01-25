@@ -66,7 +66,7 @@ No global state. No hidden caches. No IDE dependency.
     ├── arduino-project-init.sh
     ├── arduino-lib.sh
     └── arduino-doctor.sh
-
+```
 
 ## Required tools
 - make
