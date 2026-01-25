@@ -5,36 +5,29 @@ set -Eeuo pipefail
 # ardu bootstrap installer
 # Repo: https://github.com/kenguru33/arduino-build-tools
 #
-# - Verifies minimal requirements
 # - Clones or updates the repo
-# - Auto-detects and runs setup script
+# - AUTO-DETECTS setup script under tools/
+# - Runs it via bash
 #
 # Installs into:
 #   ~/.local/share/arduino-build-tools
 # ============================================================
 
 REPO_URL="https://github.com/kenguru33/arduino-build-tools.git"
-REPO_NAME="arduino-build-tools"
-
 INSTALL_BASE="$HOME/.local/share"
-CLONE_DIR="$INSTALL_BASE/$REPO_NAME"
-
-RED=$'\e[31m'
-GREEN=$'\e[32m'
-RESET=$'\e[0m'
+CLONE_DIR="$INSTALL_BASE/arduino-build-tools"
 
 log() { echo "📦 $*"; }
 die() {
-  echo "${RED}❌ $*${RESET}" >&2
+  echo "❌ $*" >&2
   exit 1
 }
 
 # ------------------------------------------------------------
-# Minimal required tools for bootstrap
+# Minimal bootstrap requirements
 # ------------------------------------------------------------
-for tool in bash git; do
-  command -v "$tool" >/dev/null || die "Required tool missing: $tool"
-done
+command -v git >/dev/null || die "git is required"
+command -v bash >/dev/null || die "bash is required"
 
 # ------------------------------------------------------------
 # Clone or update repo
@@ -51,25 +44,20 @@ else
 fi
 
 # ------------------------------------------------------------
-# Locate setup script (AUTHORITATIVE)
+# Locate setup script dynamically (NO HARD-CODING)
 # ------------------------------------------------------------
 SETUP_SCRIPT=""
 
-for candidate in \
-  "$CLONE_DIR/tools/ardu-setup.sh" \
-  "$CLONE_DIR/tools/setup.sh" \
-  "$CLONE_DIR/tools/install.sh"; do
-  if [[ -f "$candidate" ]]; then
-    SETUP_SCRIPT="$candidate"
-    break
-  fi
-done
+while IFS= read -r -d '' candidate; do
+  SETUP_SCRIPT="$candidate"
+  break
+done < <(find "$CLONE_DIR/tools" -maxdepth 1 -type f -iname '*setup*.sh' -print0)
 
-[[ -n "$SETUP_SCRIPT" ]] || die "No setup script found in tools/"
+[[ -n "$SETUP_SCRIPT" ]] || die "No setup script found under tools/ (expected *setup*.sh)"
 
 log "Running setup: $(basename "$SETUP_SCRIPT")"
 bash "$SETUP_SCRIPT"
 
 echo
-echo "${GREEN}✅ Installation complete${RESET}"
+echo "✅ Installation complete"
 echo "Run: ardu help"
