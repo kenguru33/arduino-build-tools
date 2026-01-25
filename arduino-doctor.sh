@@ -2,117 +2,95 @@
 set -Eeuo pipefail
 
 # ============================================================
-# Arduino Project Doctor
-# - Silent unless there are warnings/errors
-# - Shows ONE success line if everything is OK
-# - Read-only diagnostics
+# ardu bootstrap installer
+# Repo: https://github.com/kenguru33/arduino-build-tools
+#
+# - Verifies required tools
+# - Clones or updates the repo
+# - Runs user-space setup
+#
+# Target install:
+#   ~/.local/share/arduino-build-tools
+#   ~/.local/bin/ardu
 # ============================================================
 
+REPO_URL="https://github.com/kenguru33/arduino-build-tools.git"
+REPO_NAME="arduino-build-tools"
+
+INSTALL_BASE="$HOME/.local/share"
+CLONE_DIR="$INSTALL_BASE/$REPO_NAME"
+
 RED=$'\e[31m'
-YELLOW=$'\e[33m'
 GREEN=$'\e[32m'
 RESET=$'\e[0m'
 
-error_count=0
-warn_count=0
-
-err() {
-  echo "${RED}✖${RESET} $*" >&2
-  error_count=$((error_count + 1))
-}
-
-warn() {
-  echo "${YELLOW}⚠${RESET} $*" >&2
-  warn_count=$((warn_count + 1))
-}
-
-need_required() {
-  command -v "$1" >/dev/null || err "Required tool missing: $1"
-}
-
-need_optional() {
-  command -v "$1" >/dev/null || warn "Optional tool missing: $1"
+log() { echo "📦 $*"; }
+die() {
+  echo "${RED}❌ $*${RESET}" >&2
+  exit 1
 }
 
 # ------------------------------------------------------------
-# Required tools (project cannot function without these)
+# Required tools (HARD GATE)
 # ------------------------------------------------------------
-need_required make
-need_required avr-gcc
-need_required avr-g++
-need_required ar
-need_required objcopy || true
-need_required avr-objcopy
-need_required git
+REQUIRED_TOOLS=(
+  bash
+  git
+  make
+  avr-gcc
+  avr-g++
+  avr-objcopy
+  ar
+  bear
+  jq
+  arduino-cli
+  avrdude
+  clangd
+)
 
-# ------------------------------------------------------------
-# Optional but recommended tools
-# ------------------------------------------------------------
-need_optional bear        # compile_commands.json
-need_optional jq          # doctor + scripts
-need_optional arduino-cli # library management
-need_optional avrdude     # flashing
+missing=()
 
-# ------------------------------------------------------------
-# Project structure
-# ------------------------------------------------------------
-[[ -f Makefile ]] || err "Makefile missing"
-[[ -d core ]] || err "core/ directory missing"
-[[ -f core/Makefile ]] || err "core/Makefile missing"
-[[ -d src ]] || err "src/ directory missing"
-[[ -d libs ]] || warn "libs/ directory missing (no libraries installed)"
-[[ -d .ccdb ]] || err ".ccdb directory missing"
-[[ -f .ccdb/stub.cpp ]] || err ".ccdb/stub.cpp missing"
+for tool in "${REQUIRED_TOOLS[@]}"; do
+  command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
+done
 
-# ------------------------------------------------------------
-# Makefile sanity (TAB-sensitive)
-# ------------------------------------------------------------
-if [[ -f Makefile ]]; then
-  if grep -nP '^[ ]+\t|^\t[ ]+' Makefile >/dev/null; then
-    err "Makefile contains mixed TAB/space indentation (will break make)"
-  fi
-fi
-
-# ------------------------------------------------------------
-# LIBS consistency
-# ------------------------------------------------------------
-if [[ -f Makefile && -d libs ]]; then
-  LIBS_LINE=$(grep -E '^[[:space:]]*LIBS[[:space:]]*=' Makefile | sed 's/^[^=]*=//')
-  for lib in $LIBS_LINE; do
-    [[ -d "libs/$lib" ]] || err "Library '$lib' listed in Makefile but missing in libs/"
-  done
-fi
-
-# ------------------------------------------------------------
-# Arduino core
-# ------------------------------------------------------------
-if [[ -d core && -f core/Makefile ]]; then
-  [[ -f core/build/core.a ]] || warn "Arduino core not built (run: make)"
-fi
-
-# ------------------------------------------------------------
-# compile_commands.json
-# ------------------------------------------------------------
-if [[ -f compile_commands.json ]]; then
-  if command -v jq >/dev/null; then
-    count=$(jq length compile_commands.json 2>/dev/null || echo 0)
-    [[ "$count" -gt 0 ]] || err "compile_commands.json exists but is empty"
-  fi
-else
-  warn "compile_commands.json missing (run: make ccdb)"
-fi
-
-# ------------------------------------------------------------
-# Final result
-# ------------------------------------------------------------
-if [[ "$error_count" -gt 0 ]]; then
+if [[ "${#missing[@]}" -gt 0 ]]; then
   echo >&2
-  echo "${RED}Doctor found $error_count error(s)${RESET}" >&2
+  echo "${RED}❌ Installation aborted: missing required tools:${RESET}" >&2
+  for t in "${missing[@]}"; do
+    echo "  - $t" >&2
+  done
+  echo >&2
+  echo "Install the missing tools, then re-run the installer." >&2
   exit 1
 fi
 
-if [[ "$warn_count" -eq 0 ]]; then
-  echo "${GREEN}🩺 Doctor: all checks passed${RESET}"
+log "All required tools found"
+
+# ------------------------------------------------------------
+# Clone or update repo
+# ------------------------------------------------------------
+log "Installing Arduino build tools"
+
+mkdir -p "$INSTALL_BASE"
+
+if [[ -d "$CLONE_DIR/.git" ]]; then
+  log "Updating existing installation"
+  git -C "$CLONE_DIR" pull --ff-only
+else
+  log "Cloning repository"
+  git clone "$REPO_URL" "$CLONE_DIR"
 fi
 
-exit 0
+# ------------------------------------------------------------
+# Run setup
+# ------------------------------------------------------------
+SETUP_SCRIPT="$CLONE_DIR/tools/ardu-setup.sh"
+[[ -x "$SETUP_SCRIPT" ]] || die "Setup script not found or not executable"
+
+log "Running setup"
+"$SETUP_SCRIPT"
+
+echo
+echo "${GREEN}✅ Installation complete${RESET}"
+echo "Run: ardu help"
