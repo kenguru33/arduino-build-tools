@@ -34,6 +34,11 @@ log "Creating project: $PROJECT_NAME"
 mkdir -p "$PROJECT_NAME"/{src,libs,tools,core,.ccdb}
 
 # ------------------------------------------------------------
+# Project marker
+# ------------------------------------------------------------
+touch "$PROJECT_NAME/.arduino-project"
+
+# ------------------------------------------------------------
 # Top-level Makefile (FIXED CCDB)
 # ------------------------------------------------------------
 cat >"$PROJECT_NAME/Makefile" <<'EOF'
