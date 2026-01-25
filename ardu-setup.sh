@@ -7,7 +7,7 @@ set -Eeuo pipefail
 # - DOES NOT copy or move files
 #
 # Expected layout:
-#   ~/.local/share/ardu-tools/
+#   ~/.local/share/arduino-build-tools/
 #     ├── ardu
 #     ├── arduino-project-init.sh
 #     ├── arduino-lib.sh
@@ -17,7 +17,7 @@ set -Eeuo pipefail
 #   ~/.local/bin/ardu  (launcher only)
 # ============================================================
 
-TOOLS_DIR="$HOME/.local/share/ardu-tools"
+TOOLS_DIR="$HOME/.local/share/arduino-build-tools"
 BIN_DIR="$HOME/.local/bin"
 ARDU_BIN="$BIN_DIR/ardu"
 
