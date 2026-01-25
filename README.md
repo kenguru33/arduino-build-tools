@@ -89,13 +89,13 @@ No global state. No hidden caches. No IDE dependency.
 
 ### Install on fedora
 ```bash
+curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=~/.local/bin sh
 sudo dnf install -y \
   make \
   avr-gcc \
   avr-gcc-c++ \
   avr-libc \
   avrdude \
-  arduino-cli \
   bear \
   clangd \
   jq \
