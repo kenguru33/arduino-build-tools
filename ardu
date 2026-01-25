@@ -27,13 +27,13 @@ die() {
 
 usage() {
   cat <<'EOF'
-Usage:
+🧰 Usage:
   ardu create <project>
   ardu install <library>
   ardu remove <library>
   ardu doctor
 
-Examples:
+🚀 Examples:
   ardu create my-project
   cd my-project
   ardu install Servo
