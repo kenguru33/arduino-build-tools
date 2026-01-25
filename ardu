@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# ============================================================
+# ardu — Arduino project command wrapper
+#
+# Commands:
+#   ardu create <project>
+#   ardu install <lib>
+#   ardu remove <lib>
+#   ardu doctor
+# ============================================================
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+PROJECT_INIT="$SCRIPT_DIR/arduino-project-init.sh"
+LIB_TOOL="$SCRIPT_DIR/arduino-lib.sh"
+DOCTOR="$SCRIPT_DIR/arduino-doctor.sh"
+
+die() {
+  echo "❌ $*" >&2
+  exit 1
+}
+
+usage() {
+  cat <<'EOF'
+Usage:
+  ardu create <project>
+  ardu install <library>
+  ardu remove <library>
+  ardu doctor
+
+Examples:
+  ardu create my-project
+  cd my-project
+  ardu install Servo
+  ardu remove LedControl
+  ardu doctor
+EOF
+}
+
+# ------------------------------------------------------------
+# Preconditions
+# ------------------------------------------------------------
+[[ $# -ge 1 ]] || {
+  usage
+  exit 1
+}
+
+CMD="$1"
+shift
+
+case "$CMD" in
+create)
+  [[ $# -eq 1 ]] || die "Usage: ardu create <project>"
+  [[ -x "$PROJECT_INIT" ]] || die "Missing arduino-project-init.sh"
+  exec "$PROJECT_INIT" "$1"
+  ;;
+
+install)
+  [[ $# -eq 1 ]] || die "Usage: ardu install <library>"
+  [[ -x "$LIB_TOOL" ]] || die "Missing arduino-lib.sh"
+  exec "$LIB_TOOL" install "$1"
+  ;;
+
+remove)
+  [[ $# -eq 1 ]] || die "Usage: ardu remove <library>"
+  [[ -x "$LIB_TOOL" ]] || die "Missing arduino-lib.sh"
+  exec "$LIB_TOOL" remove "$1"
+  ;;
+
+doctor)
+  [[ $# -eq 0 ]] || die "Usage: ardu doctor"
+  [[ -x "$DOCTOR" ]] || die "Missing arduino-doctor.sh"
+  exec "$DOCTOR"
+  ;;
+
+help | -h | --help)
+  usage
+  exit 0
+  ;;
+
+*)
+  echo "❌ Unknown command: $CMD" >&2
+  usage
+  exit 1
+  ;;
+esac
