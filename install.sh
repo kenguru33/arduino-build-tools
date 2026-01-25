@@ -5,6 +5,10 @@ set -Eeuo pipefail
 # ardu bootstrap installer
 # Repo: https://github.com/kenguru33/arduino-build-tools
 #
+# - Verifies required tools
+# - Clones or updates the repo
+# - Runs setup via bash (no +x dependency)
+#
 # Installs into:
 #   ~/.local/share/arduino-build-tools
 #   ~/.local/bin/ardu
@@ -16,23 +20,42 @@ REPO_NAME="arduino-build-tools"
 INSTALL_BASE="$HOME/.local/share"
 CLONE_DIR="$INSTALL_BASE/$REPO_NAME"
 
+RED=$'\e[31m'
+GREEN=$'\e[32m'
+RESET=$'\e[0m'
+
 log() { echo "📦 $*"; }
 die() {
-  echo "❌ $*" >&2
+  echo "${RED}❌ $*${RESET}" >&2
   exit 1
 }
 
 # ------------------------------------------------------------
-# Requirements
+# Required tools (HARD GATE)
 # ------------------------------------------------------------
-command -v git >/dev/null || die "git is required"
-command -v bash >/dev/null || die "bash is required"
+REQUIRED_TOOLS=(
+  bash
+  git
+)
+
+missing=()
+for tool in "${REQUIRED_TOOLS[@]}"; do
+  command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
+done
+
+if [[ "${#missing[@]}" -gt 0 ]]; then
+  echo >&2
+  echo "${RED}❌ Installation aborted: missing required tools:${RESET}" >&2
+  for t in "${missing[@]}"; do
+    echo "  - $t" >&2
+  done
+  exit 1
+fi
 
 # ------------------------------------------------------------
 # Clone or update repo
 # ------------------------------------------------------------
 log "Installing Arduino build tools"
-
 mkdir -p "$INSTALL_BASE"
 
 if [[ -d "$CLONE_DIR/.git" ]]; then
@@ -44,13 +67,17 @@ else
 fi
 
 # ------------------------------------------------------------
-# Run setup
+# Locate setup script
 # ------------------------------------------------------------
 SETUP_SCRIPT="$CLONE_DIR/tools/ardu-setup.sh"
-[[ -x "$SETUP_SCRIPT" ]] || die "Setup script not found or not executable"
+[[ -f "$SETUP_SCRIPT" ]] || die "Setup script not found: tools/ardu-setup.sh"
 
+# ------------------------------------------------------------
+# Run setup (explicit bash)
+# ------------------------------------------------------------
 log "Running setup"
-"$SETUP_SCRIPT"
+bash "$SETUP_SCRIPT"
 
-log "Installation complete"
-log "Run: ardu help"
+echo
+echo "${GREEN}✅ Installation complete${RESET}"
+echo "Run: ardu help"
