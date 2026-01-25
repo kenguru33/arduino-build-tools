@@ -5,9 +5,6 @@ set -Eeuo pipefail
 # ardu bootstrap installer
 # Repo: https://github.com/kenguru33/arduino-build-tools
 #
-# - Clones or updates the repo
-# - Runs ardu-setup.sh from repo root
-#
 # Installs into:
 #   ~/.local/share/arduino-build-tools
 # ============================================================
@@ -23,7 +20,7 @@ die() {
 }
 
 # ------------------------------------------------------------
-# Minimal bootstrap requirements
+# Minimal requirements
 # ------------------------------------------------------------
 command -v git >/dev/null || die "git is required"
 command -v bash >/dev/null || die "bash is required"
@@ -43,7 +40,7 @@ else
 fi
 
 # ------------------------------------------------------------
-# Run setup (CORRECT PATH)
+# Run setup (ROOT FILE, NO BS)
 # ------------------------------------------------------------
 SETUP_SCRIPT="$CLONE_DIR/ardu-setup.sh"
 [[ -f "$SETUP_SCRIPT" ]] || die "Setup script not found: $SETUP_SCRIPT"
