@@ -68,3 +68,42 @@ No global state. No hidden caches. No IDE dependency.
     └── arduino-doctor.sh
 
 
+## Required tools
+- make
+- avr-gcc
+- avr-libc
+- avrdude
+- aduiono-cli
+- bear
+- clangd
+- jq
+- git
+
+### Install on fedora
+```bash
+sudo dnf install -y \
+  make \
+  avr-gcc \
+  avr-gcc-c++ \
+  avr-libc \
+  avrdude \
+  arduino-cli \
+  bear \
+  clangd \
+  jq \
+  git
+
+```
+
+### Install on MacOS (Homebrew)
+```bash
+brew install \
+  make \
+  avr-gcc \
+  avrdude \
+  arduino-cli \
+  bear \
+  llvm \
+  jq
+```
+
