@@ -90,6 +90,8 @@ No global state. No hidden caches. No IDE dependency.
 ### Install on fedora
 ```bash
 curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=~/.local/bin sh
+```
+```bash
 sudo dnf install -y \
   make \
   avr-gcc \
