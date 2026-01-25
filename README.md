@@ -6,11 +6,9 @@
 Install **arduino-build-tools** with a single command:
 
 ```bash
-```bash
 ```
 curl -fsSL https://raw.githubusercontent.com/kenguru33/arduino-build-tools/main/install.sh | bash
 ``` 
-```
 
 This project provides a **clean, reproducible, IDE-agnostic Arduino development setup**
 based on **Makefiles**, **avr-gcc**, and **clangd** — without using the Arduino IDE.
