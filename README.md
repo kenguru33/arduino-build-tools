@@ -6,7 +6,6 @@
 Install **arduino-build-tools** with a single command:
 
 ```bash
-```
 curl -fsSL https://raw.githubusercontent.com/kenguru33/arduino-build-tools/main/install.sh | bash
 ``` 
 
