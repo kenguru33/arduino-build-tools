@@ -182,22 +182,34 @@ Remove a library:
 ardu remove Servo
 ```
 
-Common workflows
+### Common workflows
 
-- Create a new project and start developing:
-  1. `ardu create my-project`
-  2. `cd my-project`
-  3. Edit `src/main.cpp` and add sources in `src/`.
+#### Create a new project
 
-  Install a library:
-  4. `ardu install Servo`
+```bash
+ardu create my-project
+cd my-project
+```
 
-- Add or remove libraries for a project:
-  - `ardu install Servo` — installs the `Servo` library into the project's `libs/` folder.
-  - `ardu remove LedControl` — removes `LedControl` from `libs/`.
+- Edit `src/main.cpp` and add sources in `src/`.
+- Build the firmware with `make`.
 
-- Check system health and toolchain:
-  - `ardu doctor` — verifies availability of `avr-gcc`, `avrdude`, `arduino-cli`, and other required tools.
+#### Install / remove a library
+
+```bash
+ardu install Servo
+ardu remove LedControl
+```
+
+This vendors libraries into `libs/` and updates the Makefile `LIBS = ...` list.
+
+#### Health check
+
+```bash
+ardu doctor
+```
+
+Verifies availability of `avr-gcc`, `avrdude`, `arduino-cli`, and other required tools.
 
 ### Notes
 
