@@ -3,13 +3,15 @@ set -Eeuo pipefail
 
 # ============================================================
 # ardu bootstrap installer
-# - clones repo
-# - runs setup
-# - installs into ~/.local
+# Repo: https://github.com/kenguru33/arduino-build-tools
+#
+# Installs into:
+#   ~/.local/share/arduino-build-tools
+#   ~/.local/bin/ardu
 # ============================================================
 
-REPO_URL="https://github.com/YOUR_ORG/ardu-tools.git"
-REPO_NAME="ardu-tools"
+REPO_URL="https://github.com/kenguru33/arduino-build-tools.git"
+REPO_NAME="arduino-build-tools"
 
 INSTALL_BASE="$HOME/.local/share"
 CLONE_DIR="$INSTALL_BASE/$REPO_NAME"
@@ -29,15 +31,15 @@ command -v bash >/dev/null || die "bash is required"
 # ------------------------------------------------------------
 # Clone or update repo
 # ------------------------------------------------------------
-log "Installing ardu-tools"
+log "Installing Arduino build tools"
 
 mkdir -p "$INSTALL_BASE"
 
 if [[ -d "$CLONE_DIR/.git" ]]; then
-  log "Updating existing repo"
+  log "Updating existing installation"
   git -C "$CLONE_DIR" pull --ff-only
 else
-  log "Cloning repo"
+  log "Cloning repository"
   git clone "$REPO_URL" "$CLONE_DIR"
 fi
 
@@ -45,7 +47,7 @@ fi
 # Run setup
 # ------------------------------------------------------------
 SETUP_SCRIPT="$CLONE_DIR/tools/ardu-setup.sh"
-[[ -x "$SETUP_SCRIPT" ]] || die "Setup script not found"
+[[ -x "$SETUP_SCRIPT" ]] || die "Setup script not found or not executable"
 
 log "Running setup"
 "$SETUP_SCRIPT"
