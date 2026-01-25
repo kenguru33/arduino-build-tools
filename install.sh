@@ -6,8 +6,7 @@ set -Eeuo pipefail
 # Repo: https://github.com/kenguru33/arduino-build-tools
 #
 # - Clones or updates the repo
-# - AUTO-DETECTS setup script under tools/
-# - Runs it via bash
+# - Runs ardu-setup.sh from repo root
 #
 # Installs into:
 #   ~/.local/share/arduino-build-tools
@@ -44,18 +43,12 @@ else
 fi
 
 # ------------------------------------------------------------
-# Locate setup script dynamically (NO HARD-CODING)
+# Run setup (CORRECT PATH)
 # ------------------------------------------------------------
-SETUP_SCRIPT=""
+SETUP_SCRIPT="$CLONE_DIR/ardu-setup.sh"
+[[ -f "$SETUP_SCRIPT" ]] || die "Setup script not found: $SETUP_SCRIPT"
 
-while IFS= read -r -d '' candidate; do
-  SETUP_SCRIPT="$candidate"
-  break
-done < <(find "$CLONE_DIR/tools" -maxdepth 1 -type f -iname '*setup*.sh' -print0)
-
-[[ -n "$SETUP_SCRIPT" ]] || die "No setup script found under tools/ (expected *setup*.sh)"
-
-log "Running setup: $(basename "$SETUP_SCRIPT")"
+log "Running setup"
 bash "$SETUP_SCRIPT"
 
 echo
