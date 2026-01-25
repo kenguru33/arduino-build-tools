@@ -1,19 +1,34 @@
 # Arduino Makefile Toolchain (No Arduino IDE)
 
-This project provides a **clean, reproducible, IDE-agnostic Arduino development setup**
-based on **Makefiles**, **avr-gcc**, and **clangd** — without using the Arduino IDE.
-It includes a small helper script (`ardu`) and a set of vendored tools to make
-common workflows (project creation, library management, health checks) fast and
-reproducible across machines and CI.
+An IDE-agnostic Arduino AVR workflow built around **Makefiles**, **avr-gcc**, and
+**clangd**. This repo provides the `ardu` helper and a set of scripts to create
+projects with vendored dependencies and a reliable `compile_commands.json`.
 
-It is designed for developers who want:
+Goals:
 
-- full control over the build
-- reproducible projects
-- proper autocomplete and navigation
-- zero hidden tooling or magic
+- Transparent, reproducible builds (no hidden IDE state)
+- Per-project vendoring (`core/`, `libs/`)
+- First-class editor support via `clangd`
 
----
+## Quickstart
+
+```bash
+ardu doctor
+ardu create my-project
+cd my-project
+make
+make ccdb
+```
+
+## Contents
+
+- [Installation](#installation)
+- [Prerequisites](#prerequisites)
+- [Using `ardu`](#using-ardu)
+- [Project layout](#project-layout)
+- [Editor integration (clangd)](#editor-integration-clangd)
+- [Motivation](#motivation)
+- [Troubleshooting](#troubleshooting)
 
 ## Installation
 
@@ -23,7 +38,14 @@ Install **arduino-build-tools** with a single command:
 curl -fsSL https://raw.githubusercontent.com/kenguru33/arduino-build-tools/main/install.sh | bash
 ```
 
-## Why this exists
+The installer registers a launcher at `$HOME/.local/bin/ardu`. If `ardu` is not
+found, add this to your shell config:
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+```
+
+## Motivation
 
 The Arduino IDE:
 
@@ -42,8 +64,6 @@ This toolchain solves that by:
 
 If something breaks, you can see _why_.
 
----
-
 ## What this project gives you
 
 After initialization, each project has:
@@ -57,8 +77,6 @@ After initialization, each project has:
 - `tools/arduino-doctor.sh` – health checks (read-only)
 
 No global state. No hidden caches. No IDE dependency.
-
----
 
 ## Project layout
 
@@ -80,11 +98,12 @@ No global state. No hidden caches. No IDE dependency.
     └── arduino-doctor.sh
 ```
 
-## Required tools
+## Prerequisites
 
 - make
-- avr-gcc
+- avr-gcc / avr-g++
 - avr-libc
+- binutils (for `avr-objcopy`, `ar`)
 - avrdude
 - arduino-cli
 - bear
@@ -92,7 +111,7 @@ No global state. No hidden caches. No IDE dependency.
 - jq
 - git
 
-### Install on fedora
+### Fedora
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | BINDIR=~/.local/bin sh
@@ -109,12 +128,11 @@ sudo dnf install -y \
   clangd \
   jq \
   git
-
 ```
 
-### Install on MacOS (Homebrew)
+### macOS (Homebrew)
 
-````bash
+```bash
 brew install \
   make \
   avr-gcc \
@@ -124,38 +142,37 @@ brew install \
   llvm \
   jq
 
-## Using the `ardu` helper and workflows
+```
+
+## Using `ardu`
 
 This repository ships a small wrapper script called `ardu` (installed to
 `$HOME/.local/share/arduino-build-tools/ardu`) that invokes the per-repo
 tools. It simplifies common tasks so you don't need to call the underlying
 scripts directly.
 
-Commands (run from any directory):
+Commands:
 
-  - `ardu create <project>` — Create a new project skeleton in the current directory.
-  - `ardu install <library>` — Install a library into the current project (uses the vendored `tools/arduino-lib.sh`).
-  - `ardu remove <library>` — Remove a vendored library from the current project.
-  - `ardu doctor` — Run health checks to verify required tools and environment.
+- `ardu create <project>`: create a new project skeleton in the current directory.
+- `ardu install <library>`: vendor a library into the current project and update the Makefile `LIBS` list.
+- `ardu remove <library>`: remove a vendored library from the current project and update the Makefile.
+- `ardu doctor`: verify required tools and (when inside a project) validate project structure.
 
 Common workflows
 
 - Create a new project and start developing:
-
   1. `ardu create my-project`
   2. `cd my-project`
   3. Edit `src/main.cpp` and add sources in `src/`.
 
 - Add or remove libraries for a project:
-
   - `ardu install Servo` — installs the `Servo` library into the project's `libs/` folder.
   - `ardu remove LedControl` — removes `LedControl` from `libs/`.
 
 - Check system health and toolchain:
-
   - `ardu doctor` — verifies availability of `avr-gcc`, `avrdude`, `arduino-cli`, and other required tools.
 
-Notes
+### Notes
 
 - Tools live in `$HOME/.local/share/arduino-build-tools` and are invoked by the
   `ardu` wrapper. You can run the underlying scripts directly from the
@@ -164,14 +181,21 @@ Notes
   `compile_commands.json` for editor tooling; use `make` inside a project to
   build the firmware.
 
-## Editor integration (Neovim, VS Code, CLion) — using `clangd`
+Makefile targets (inside a project):
+
+- `make`: build `build/firmware.hex`
+- `make ccdb`: (re)generate `compile_commands.json` for `clangd`
+- `make flash`: upload firmware via `avrdude` (configure `PORT`/`BAUD` in the Makefile)
+- `make clean`: remove build outputs
+
+## Editor integration (clangd)
 
 All editors below rely on the compilation database `compile_commands.json` that
 the project Makefile generates. Ensure the file is present at the project root
 before opening the project in your editor so `clangd` can pick up the
 compile flags and include paths.
 
-Neovim (recommended setup)
+### Neovim
 
 - Install `clangd` and an LSP client (for example `neovim/nvim-lspconfig`).
 - Minimal `lspconfig` snippet to add to your Neovim config:
@@ -182,11 +206,11 @@ lspconfig.clangd.setup{
   cmd = { 'clangd', '--background-index' },
   root_dir = require('lspconfig.util').root_pattern('compile_commands.json', '.git')
 }
-````
+```
 
 Open the project root in Neovim and `clangd` will use `compile_commands.json`.
 
-VS Code
+### VS Code
 
 - Install the `clangd` extension (LLVM) or the Microsoft C/C++ extension.
 - Recommended workspace settings (`.vscode/settings.json`):
@@ -203,7 +227,7 @@ Open the project folder in VS Code — the extension will pick up
 `compile_commands.json` and enable accurate completion, diagnostics and
 navigation.
 
-CLion (using clangd)
+### CLion
 
 - Generate `compile_commands.json` in the project root with the Makefile.
 - In CLion you can either:
@@ -214,7 +238,7 @@ CLion (using clangd)
   forward language features to the external `clangd` binary and configure the
   path in plugin settings if necessary.
 
-Notes
+### Notes
 
 - If `clangd` doesn't pick up `compile_commands.json`, check that the file is
   at the project root and that the editor's root directory matches the project
@@ -223,6 +247,9 @@ Notes
 - The Makefile produces a `compile_commands.json` suitable for editor tooling
   so the above setups should work out of the box once the file is present.
 
-```
+## Troubleshooting
 
-```
+- `ardu` not found: ensure `$HOME/.local/bin` is on your `PATH`.
+- `compile_commands.json` missing or empty: run `make ccdb`.
+- Autocomplete is stale: rerun `make ccdb`, then restart `clangd` in your editor.
+- Upload failing: check `PORT`, `BAUD`, and `MCU` in the project Makefile and verify serial device permissions.
