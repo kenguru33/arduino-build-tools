@@ -5,13 +5,12 @@ set -Eeuo pipefail
 # ardu bootstrap installer
 # Repo: https://github.com/kenguru33/arduino-build-tools
 #
-# - Verifies required tools
+# - Verifies minimal requirements
 # - Clones or updates the repo
-# - Runs setup via bash (no +x dependency)
+# - Auto-detects and runs setup script
 #
 # Installs into:
 #   ~/.local/share/arduino-build-tools
-#   ~/.local/bin/ardu
 # ============================================================
 
 REPO_URL="https://github.com/kenguru33/arduino-build-tools.git"
@@ -31,26 +30,11 @@ die() {
 }
 
 # ------------------------------------------------------------
-# Required tools (HARD GATE)
+# Minimal required tools for bootstrap
 # ------------------------------------------------------------
-REQUIRED_TOOLS=(
-  bash
-  git
-)
-
-missing=()
-for tool in "${REQUIRED_TOOLS[@]}"; do
-  command -v "$tool" >/dev/null 2>&1 || missing+=("$tool")
+for tool in bash git; do
+  command -v "$tool" >/dev/null || die "Required tool missing: $tool"
 done
-
-if [[ "${#missing[@]}" -gt 0 ]]; then
-  echo >&2
-  echo "${RED}❌ Installation aborted: missing required tools:${RESET}" >&2
-  for t in "${missing[@]}"; do
-    echo "  - $t" >&2
-  done
-  exit 1
-fi
 
 # ------------------------------------------------------------
 # Clone or update repo
@@ -67,15 +51,23 @@ else
 fi
 
 # ------------------------------------------------------------
-# Locate setup script
+# Locate setup script (AUTHORITATIVE)
 # ------------------------------------------------------------
-SETUP_SCRIPT="$CLONE_DIR/tools/ardu-setup.sh"
-[[ -f "$SETUP_SCRIPT" ]] || die "Setup script not found: tools/ardu-setup.sh"
+SETUP_SCRIPT=""
 
-# ------------------------------------------------------------
-# Run setup (explicit bash)
-# ------------------------------------------------------------
-log "Running setup"
+for candidate in \
+  "$CLONE_DIR/tools/ardu-setup.sh" \
+  "$CLONE_DIR/tools/setup.sh" \
+  "$CLONE_DIR/tools/install.sh"; do
+  if [[ -f "$candidate" ]]; then
+    SETUP_SCRIPT="$candidate"
+    break
+  fi
+done
+
+[[ -n "$SETUP_SCRIPT" ]] || die "No setup script found in tools/"
+
+log "Running setup: $(basename "$SETUP_SCRIPT")"
 bash "$SETUP_SCRIPT"
 
 echo
