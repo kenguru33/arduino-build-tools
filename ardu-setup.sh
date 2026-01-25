@@ -3,18 +3,22 @@ set -Eeuo pipefail
 
 # ============================================================
 # ardu setup script
-# Installs ardu CLI and tools into user space
+# - Registers existing ardu tools in user space
+# - DOES NOT copy or move files
 #
-# Target:
-#   ~/.local/share/ardu-tools
-#   ~/.local/bin/ardu
+# Expected layout:
+#   ~/.local/share/ardu-tools/
+#     ├── ardu
+#     ├── arduino-project-init.sh
+#     ├── arduino-lib.sh
+#     └── arduino-doctor.sh
+#
+# Installs:
+#   ~/.local/bin/ardu  (launcher only)
 # ============================================================
 
-TOOLS_SRC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-
-INSTALL_DIR="$HOME/.local/share/ardu-tools"
+TOOLS_DIR="$HOME/.local/share/ardu-tools"
 BIN_DIR="$HOME/.local/bin"
-
 ARDU_BIN="$BIN_DIR/ardu"
 
 log() { echo "📦 $*"; }
@@ -26,36 +30,27 @@ die() {
 # ------------------------------------------------------------
 # Preconditions
 # ------------------------------------------------------------
-[[ -d "$TOOLS_SRC_DIR" ]] || die "tools directory not found"
-[[ -f "$TOOLS_SRC_DIR/ardu" ]] || die "ardu entry script not found"
+[[ -d "$TOOLS_DIR" ]] || die "Tools directory not found: $TOOLS_DIR"
+[[ -f "$TOOLS_DIR/ardu" ]] || die "ardu entry script not found in $TOOLS_DIR"
+
+# Ensure all required scripts exist
+for f in ardu arduino-project-init.sh arduino-lib.sh arduino-doctor.sh; do
+  [[ -f "$TOOLS_DIR/$f" ]] || die "Missing required tool: $TOOLS_DIR/$f"
+done
 
 # ------------------------------------------------------------
-# Create directories
+# Create bin dir
 # ------------------------------------------------------------
-log "Creating install directories"
-mkdir -p "$INSTALL_DIR"
 mkdir -p "$BIN_DIR"
 
 # ------------------------------------------------------------
-# Copy tools
-# ------------------------------------------------------------
-log "Installing tools to $INSTALL_DIR"
-
-cp -f "$TOOLS_SRC_DIR/ardu" "$INSTALL_DIR/"
-cp -f "$TOOLS_SRC_DIR/arduino-project-init.sh" "$INSTALL_DIR/"
-cp -f "$TOOLS_SRC_DIR/arduino-lib.sh" "$INSTALL_DIR/"
-cp -f "$TOOLS_SRC_DIR/arduino-doctor.sh" "$INSTALL_DIR/"
-
-chmod +x "$INSTALL_DIR/"*
-
-# ------------------------------------------------------------
-# Create launcher in ~/.local/bin
+# Create launcher (no copying)
 # ------------------------------------------------------------
 log "Creating launcher: $ARDU_BIN"
 
 cat >"$ARDU_BIN" <<EOF
 #!/usr/bin/env bash
-exec "$INSTALL_DIR/ardu" "\$@"
+exec "$TOOLS_DIR/ardu" "\$@"
 EOF
 
 chmod +x "$ARDU_BIN"
@@ -72,6 +67,6 @@ if ! command -v ardu >/dev/null 2>&1; then
   echo
 fi
 
-log "ardu installed successfully"
+log "ardu registered successfully"
 log "Run: ardu help"
 log "✅ Done"

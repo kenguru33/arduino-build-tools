@@ -9,13 +9,16 @@ set -Eeuo pipefail
 #   ardu install <lib>
 #   ardu remove <lib>
 #   ardu doctor
+#
+# Tools live in:
+#   ~/.local/share/arduino-build-tools
 # ============================================================
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+TOOLS_DIR="$HOME/.local/share/arduino-build-tools"
 
-PROJECT_INIT="$SCRIPT_DIR/arduino-project-init.sh"
-LIB_TOOL="$SCRIPT_DIR/arduino-lib.sh"
-DOCTOR="$SCRIPT_DIR/arduino-doctor.sh"
+PROJECT_INIT="$TOOLS_DIR/arduino-project-init.sh"
+LIB_TOOL="$TOOLS_DIR/arduino-lib.sh"
+DOCTOR="$TOOLS_DIR/arduino-doctor.sh"
 
 die() {
   echo "❌ $*" >&2
@@ -42,6 +45,8 @@ EOF
 # ------------------------------------------------------------
 # Preconditions
 # ------------------------------------------------------------
+[[ -d "$TOOLS_DIR" ]] || die "Tools directory not found: $TOOLS_DIR"
+
 [[ $# -ge 1 ]] || {
   usage
   exit 1
