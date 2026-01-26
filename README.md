@@ -91,6 +91,8 @@ No global state. No hidden caches. No IDE dependency.
 
 ```text
 .
+├── wokwi.toml
+├── diagram.json
 ├── Makefile
 ├── src/
 │   └── main.cpp

@@ -40,12 +40,24 @@ mkdir -p "$PROJECT_NAME"/{src,libs,tools,core,.ccdb}
 touch "$PROJECT_NAME/.arduino-project"
 
 # ------------------------------------------------------------
-# Copy Wokwi/diagram files if present
+# Copy Wokwi/diagram files (prefer tool install dir)
 # ------------------------------------------------------------
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+
 for f in diagram.json wokwi.toml; do
-	if [[ -f "$f" ]]; then
-		cp "$f" "$PROJECT_NAME/$f"
+	src=""
+	if [[ -f "$SCRIPT_DIR/$f" ]]; then
+		src="$SCRIPT_DIR/$f"
+	elif [[ -f "$f" ]]; then
+		# Fallback for running the script from the repo root.
+		src="$f"
+	fi
+
+	if [[ -n "$src" ]]; then
+		cp "$src" "$PROJECT_NAME/$f"
 		log "Added $f"
+	else
+		log "Skipping $f (not found)"
 	fi
 done
 
