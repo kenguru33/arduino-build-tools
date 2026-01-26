@@ -26,6 +26,7 @@ need bear
 need mkdir
 need cat
 need rm
+need cp
 
 # ------------------------------------------------------------
 # Create structure
@@ -37,6 +38,16 @@ mkdir -p "$PROJECT_NAME"/{src,libs,tools,core,.ccdb}
 # Project marker
 # ------------------------------------------------------------
 touch "$PROJECT_NAME/.arduino-project"
+
+# ------------------------------------------------------------
+# Copy Wokwi/diagram files if present
+# ------------------------------------------------------------
+for f in diagram.json wokwi.toml; do
+	if [[ -f "$f" ]]; then
+		cp "$f" "$PROJECT_NAME/$f"
+		log "Added $f"
+	fi
+done
 
 # ------------------------------------------------------------
 # Top-level Makefile (FIXED CCDB)

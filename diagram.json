@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-arduino-uno",
+      "id": "uno",
+      "top": 0.6,
+      "left": -77.4,
+      "attrs": {}
+    }
+  ],
+  "connections": [],
+  "dependencies": {}
+}
