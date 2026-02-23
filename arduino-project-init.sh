@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 # ============================================================
-# Arduino Project Initializer (FINAL, AUTHORITATIVE)
+# Arduino Project Initializer (cleaned: no clangd/ccdb, no stub)
 # ============================================================
 
 PROJECT_NAME="${1:-arduino-project}"
@@ -11,18 +11,14 @@ PROJECT_NAME="${1:-arduino-project}"
 # Helpers
 # ------------------------------------------------------------
 log() { echo "📦 $*"; }
-die() {
-  echo "❌ $*" >&2
-  exit 1
-}
-need() { command -v "$1" >/dev/null || die "Missing dependency: $1"; }
+die() { echo "❌ $*" >&2; exit 1; }
+need() { command -v "$1" >/dev/null 2>&1 || die "Missing dependency: $1"; }
 
 # ------------------------------------------------------------
 # Dependencies
 # ------------------------------------------------------------
 need git
 need make
-need bear
 need mkdir
 need cat
 need rm
@@ -32,7 +28,7 @@ need cp
 # Create structure
 # ------------------------------------------------------------
 log "Creating project: $PROJECT_NAME"
-mkdir -p "$PROJECT_NAME"/{src,libs,tools,core,.ccdb}
+mkdir -p "$PROJECT_NAME"/{src,libs,tools,core}
 
 # ------------------------------------------------------------
 # Project marker
@@ -45,122 +41,140 @@ touch "$PROJECT_NAME/.arduino-project"
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 
 for f in diagram.json wokwi.toml; do
-	src=""
-	if [[ -f "$SCRIPT_DIR/$f" ]]; then
-		src="$SCRIPT_DIR/$f"
-	elif [[ -f "$f" ]]; then
-		# Fallback for running the script from the repo root.
-		src="$f"
-	fi
+  src=""
+  if [[ -f "$SCRIPT_DIR/$f" ]]; then
+    src="$SCRIPT_DIR/$f"
+  elif [[ -f "$f" ]]; then
+    # Fallback for running the script from the repo root.
+    src="$f"
+  fi
 
-	if [[ -n "$src" ]]; then
-		cp "$src" "$PROJECT_NAME/$f"
-		log "Added $f"
-	else
-		log "Skipping $f (not found)"
-	fi
+  if [[ -n "$src" ]]; then
+    cp "$src" "$PROJECT_NAME/$f"
+    log "Added $f"
+  else
+    log "Skipping $f (not found)"
+  fi
 done
 
 # ------------------------------------------------------------
-# Top-level Makefile (FIXED CCDB)
+# Top-level Makefile
 # ------------------------------------------------------------
 cat >"$PROJECT_NAME/Makefile" <<'EOF'
-# ------------------------------------------------------------
-# Board / Upload
-# ------------------------------------------------------------
-MCU     = atmega328p
-F_CPU   = 16000000UL
-PORT    = /dev/ttyACM0
-BAUD    = 115200
+# ============================================================
+# Project
+# ============================================================
+TARGET    = firmware
+BUILD_DIR = build
 
-# ------------------------------------------------------------
+# ============================================================
+# Board
+# ============================================================
+MCU   = atmega328p
+F_CPU = 16000000UL
+PORT  = /dev/ttyACM0
+BAUD  = 115200
+
+# ============================================================
 # Toolchain
-# ------------------------------------------------------------
+# ============================================================
 CC      = avr-gcc
 CXX     = avr-g++
 OBJCOPY = avr-objcopy
+SIZE    = avr-size
 
-# ------------------------------------------------------------
+# ============================================================
 # Arduino core
-# ------------------------------------------------------------
-CORE_DIR = core
-CORE_LIB = $(CORE_DIR)/build/core.a
+# ============================================================
+CORE_DIR       = core
+CORE_BUILD_DIR = $(CORE_DIR)/build
+CORE_LIB       = $(CORE_BUILD_DIR)/core.a
 
-# ------------------------------------------------------------
-# Arduino architecture
-# ------------------------------------------------------------
-ARDUINO_ARCH = avr
+# ============================================================
+# Flags
+# ============================================================
+COMMON_FLAGS = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os \
+               -Wall -ffunction-sections -fdata-sections \
+               -DARDUINO=10819 \
+               -DARDUINO_ARCH_AVR \
+               -DARDUINO_AVR_UNO \
+               -I$(CORE_DIR)/cores/arduino \
+               -I$(CORE_DIR)/variants/standard
 
-# ------------------------------------------------------------
-# Arduino-style libraries
-# ------------------------------------------------------------
-LIBS     =
-LIB_DIR  = libs
-
-LIB_SRC := $(foreach L,$(LIBS), \
-  $(wildcard $(LIB_DIR)/$(L)/src/$(ARDUINO_ARCH)/*.cpp) \
-  $(wildcard $(LIB_DIR)/$(L)/src/*.cpp))
-
-LIB_INC := $(foreach L,$(LIBS), \
-  -I$(LIB_DIR)/$(L)/src \
-  -I$(LIB_DIR)/$(L)/src/$(ARDUINO_ARCH))
-
-# ------------------------------------------------------------
-# Compiler flags
-# ------------------------------------------------------------
-CFLAGS = -mmcu=$(MCU) -DF_CPU=$(F_CPU) -Os \
-  -Wall -ffunction-sections -fdata-sections \
-  -DARDUINO=10819 \
-  -DARDUINO_ARCH_AVR \
-  -DARDUINO_AVR_UNO \
-  -I$(CORE_DIR)/cores/arduino \
-  -I$(CORE_DIR)/variants/standard \
-  $(LIB_INC)
-
-CXXFLAGS = $(CFLAGS) -fno-exceptions -fno-rtti
+CXXFLAGS = $(COMMON_FLAGS) -fno-exceptions -fno-rtti
 LDFLAGS  = -Wl,--gc-sections
 
-# ------------------------------------------------------------
+# ============================================================
 # Sources
-# ------------------------------------------------------------
-SRC := src/main.cpp $(LIB_SRC)
-OBJ := $(SRC:%.cpp=build/%.o)
+# ============================================================
+SRC_CPP = src/main.cpp
+OBJ     = $(BUILD_DIR)/main.o
 
-# ------------------------------------------------------------
-# Targets
-# ------------------------------------------------------------
-all: build/firmware.hex
+# ============================================================
+# Default
+# ============================================================
+all: $(BUILD_DIR)/$(TARGET).hex
 
-# Build Arduino core on demand
-$(CORE_LIB):
-	$(MAKE) -C $(CORE_DIR)
+# ============================================================
+# Force avr-ar / avr-ranlib (CRITICAL ON macOS)
+# ============================================================
+TOOLS_DIR = .tools/bin
 
-build/%.o: %.cpp
-	@mkdir -p $(dir $@)
+$(TOOLS_DIR)/ar:
+	@mkdir -p $(TOOLS_DIR)
+	@printf '%s\n' '#!/usr/bin/env sh' 'exec avr-ar "$$@"' > $@
+	@chmod +x $@
+
+$(TOOLS_DIR)/ranlib:
+	@mkdir -p $(TOOLS_DIR)
+	@printf '%s\n' '#!/usr/bin/env sh' 'exec avr-ranlib "$$@"' > $@
+	@chmod +x $@
+
+$(CORE_LIB): $(TOOLS_DIR)/ar $(TOOLS_DIR)/ranlib
+	rm -rf $(CORE_BUILD_DIR)
+	PATH="$(abspath $(TOOLS_DIR)):$$PATH" \
+	$(MAKE) -C $(CORE_DIR) CC=$(CC) CXX=$(CXX)
+
+# ============================================================
+# Compile
+# ============================================================
+$(BUILD_DIR)/main.o: src/main.cpp
+	@mkdir -p $(BUILD_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-build/firmware.elf: $(OBJ) $(CORE_LIB)
-	$(CXX) $(CXXFLAGS) $(OBJ) $(CORE_LIB) -o $@ $(LDFLAGS)
+# ============================================================
+# Link
+# ============================================================
+$(BUILD_DIR)/$(TARGET).elf: $(OBJ) $(CORE_LIB)
+	$(CXX) $(CXXFLAGS) \
+		$(OBJ) \
+		-Wl,--start-group \
+		$(CORE_LIB) \
+		-Wl,--end-group \
+		$(LDFLAGS) \
+		-o $@
+	$(SIZE) $@
 
-build/firmware.hex: build/firmware.elf
+# ============================================================
+# HEX
+# ============================================================
+$(BUILD_DIR)/$(TARGET).hex: $(BUILD_DIR)/$(TARGET).elf
 	$(OBJCOPY) -O ihex $< $@
 
-# ------------------------------------------------------------
-# ALWAYS-FORCED compile_commands.json (STUB-BASED)
-# ------------------------------------------------------------
-.PHONY: ccdb
-
-ccdb:
-	rm -f compile_commands.json
-	rm -f .ccdb/stub.o
-	bear -- $(CXX) $(CXXFLAGS) -c .ccdb/stub.cpp -o .ccdb/stub.o
-
-flash: build/firmware.hex
+# ============================================================
+# Flash
+# ============================================================
+flash: $(BUILD_DIR)/$(TARGET).hex
 	avrdude -p m328p -c arduino -P $(PORT) -b $(BAUD) \
 		-U flash:w:$<
 
+# ============================================================
+# Clean
+# ============================================================
 clean:
-	rm -rf build .ccdb
+	rm -rf $(BUILD_DIR) $(CORE_BUILD_DIR) .tools
+
+.PHONY: all clean flash
 EOF
 
 # ------------------------------------------------------------
@@ -227,23 +241,8 @@ void setup() {}
 void loop() {}
 EOF
 
-# ------------------------------------------------------------
-# Stub file for clangd / ccdb
-# ------------------------------------------------------------
-cat >"$PROJECT_NAME/.ccdb/stub.cpp" <<'EOF'
-#include <Arduino.h>
-int main() { return 0; }
-EOF
-
-# ------------------------------------------------------------
-# Generate compile_commands.json (GUARANTEED NON-EMPTY)
-# ------------------------------------------------------------
-log "Generating compile_commands.json (forced stub)"
-cd "$PROJECT_NAME"
-make ccdb >/dev/null
-
 log "Project initialized successfully"
 log "cd $PROJECT_NAME"
 log "make        # build firmware"
-log "make ccdb   # refresh autocomplete anytime"
+log "make flash  # upload to board"
 log "✅ Done"
