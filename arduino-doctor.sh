@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 # ============================================================
-# Arduino Project Doctor
+# Arduino Project Doctor (cleaned: no clang/clangd/ccdb)
 # - Works from ANY directory
 # - Uses explicit project marker (.arduino-project)
 # - Walks up directories to find project root
@@ -32,7 +32,7 @@ warn() {
 }
 
 need() {
-  command -v "$1" >/dev/null || err "Required tool missing: $1"
+  command -v "$1" >/dev/null 2>&1 || err "Required tool missing: $1"
 }
 
 # ------------------------------------------------------------
@@ -44,11 +44,9 @@ need avr-g++
 need avr-objcopy
 need ar
 need git
-need bear
 need jq
 need arduino-cli
 need avrdude
-need clangd
 
 if [[ "$error_count" -gt 0 ]]; then
   echo >&2
@@ -90,40 +88,40 @@ cd "$PROJECT_ROOT"
 [[ -d core ]] || err "core/ directory missing"
 [[ -f core/Makefile ]] || err "core/Makefile missing"
 [[ -d src ]] || err "src/ directory missing"
-[[ -d .ccdb ]] || err ".ccdb directory missing"
-[[ -f .ccdb/stub.cpp ]] || err ".ccdb/stub.cpp missing"
+[[ -f src/main.cpp ]] || warn "src/main.cpp missing"
 [[ -d libs ]] || warn "libs/ directory missing (no libraries installed)"
 
 # ------------------------------------------------------------
 # Makefile sanity (TAB-sensitive)
 # ------------------------------------------------------------
-if grep -nP '^[ ]+\t|^\t[ ]+' Makefile >/dev/null; then
+if [[ -f Makefile ]] && grep -nP '^[ ]+\t|^\t[ ]+' Makefile >/dev/null; then
   err "Makefile contains mixed TAB/space indentation (will break make)"
 fi
 
 # ------------------------------------------------------------
-# LIBS consistency
+# LIBS consistency (only if libs/ exists and Makefile declares LIBS)
 # ------------------------------------------------------------
-if [[ -d libs ]]; then
-  LIBS_LINE=$(grep -E '^[[:space:]]*LIBS[[:space:]]*=' Makefile | sed 's/^[^=]*=//')
-  for lib in $LIBS_LINE; do
-    [[ -d "libs/$lib" ]] || err "Library '$lib' listed in Makefile but missing in libs/"
-  done
+if [[ -f Makefile && -d libs ]]; then
+  LIBS_LINE="$(grep -E '^[[:space:]]*LIBS[[:space:]]*=' Makefile | head -n1 | sed 's/^[^=]*=//')"
+  if [[ -n "${LIBS_LINE//[[:space:]]/}" ]]; then
+    for lib in $LIBS_LINE; do
+      [[ -d "libs/$lib" ]] || err "Library '$lib' listed in Makefile but missing in libs/"
+    done
+  fi
 fi
 
 # ------------------------------------------------------------
-# Arduino core
+# Arduino core build artifact
 # ------------------------------------------------------------
-[[ -f core/build/core.a ]] || warn "Arduino core not built (run: make)"
+if [[ -d core ]]; then
+  [[ -f core/build/core.a ]] || warn "Arduino core not built (run: make)"
+fi
 
 # ------------------------------------------------------------
-# compile_commands.json
+# Optional: stale clang/ccdb leftovers (warn only)
 # ------------------------------------------------------------
-if [[ -f compile_commands.json ]]; then
-  count=$(jq length compile_commands.json 2>/dev/null || echo 0)
-  [[ "$count" -gt 0 ]] || err "compile_commands.json exists but is empty"
-else
-  warn "compile_commands.json missing (run: make ccdb)"
+if [[ -d .ccdb || -f compile_commands.json ]]; then
+  warn "Found clangd/ccdb leftovers (.ccdb/ or compile_commands.json). You said you don't use clang—safe to delete."
 fi
 
 # ------------------------------------------------------------
