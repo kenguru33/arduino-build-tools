@@ -142,17 +142,26 @@ sudo dnf install -y \
 ```
 
 ### macOS (Homebrew)
+Make sure you have xcode command line developer tools installed:
+```bash
+xcode-select --install
+```
+
+Run the following to install the latest version of avr-gcc:
+```bash
+brew tap osx-cross/avr
+```
 
 ```bash
 brew install \
   make \
   avr-gcc \
+  avr-libc \
   avrdude \
-  arduino-cli \
   bear \
-  llvm \
-  jq
-
+  clangd \
+  jq \
+  git
 ```
 
 ## 🧩 Using `ardu`
