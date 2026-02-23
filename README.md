@@ -156,10 +156,9 @@ brew tap osx-cross/avr
 brew install \
   make \
   avr-gcc \
-  avr-libc \
   avrdude \
   bear \
-  clangd \
+  llvm \
   jq \
   git
 ```
