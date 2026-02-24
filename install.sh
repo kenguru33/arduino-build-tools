@@ -26,6 +26,22 @@ command -v git >/dev/null || die "git is required"
 command -v bash >/dev/null || die "bash is required"
 
 # ------------------------------------------------------------
+# Ensure arduino-cli is installed (user-local)
+# ------------------------------------------------------------
+if ! command -v arduino-cli >/dev/null; then
+  log "arduino-cli not found, installing (user-local)"
+
+  mkdir -p "$HOME/.local/bin"
+
+  curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh |
+    BINDIR="$HOME/.local/bin" sh
+
+  command -v arduino-cli >/dev/null || die "arduino-cli installation failed"
+else
+  log "arduino-cli already installed"
+fi
+
+# ------------------------------------------------------------
 # Clone or update repo
 # ------------------------------------------------------------
 log "Installing Arduino build tools"
